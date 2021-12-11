@@ -37,6 +37,12 @@ package object aoc2021 {
         x <- grid.head.indices
       } yield Point(x, y)
 
+    def allPointsLazy: LazyList[Point] =
+      for {
+        y <- grid.indices.to(LazyList)
+        x <- grid.head.indices.to(LazyList)
+      } yield Point(x, y)
+
     def neighbours(point: Point): Seq[Point] = {
       val raw = Seq(Point(point.x-1, point.y), Point(point.x, point.y-1), Point(point.x+1, point.y), Point(point.x, point.y+1))
       raw.filter(p => p.x >= 0 && p.x < grid.head.length && p.y >= 0 && p.y < grid.length)
@@ -52,5 +58,11 @@ package object aoc2021 {
     def forall(pred: Int => Boolean): Boolean = {
       grid.forall(_.forall(pred))
     }
+
+    def findPoint(pred: Int => Boolean): Option[Point] = {
+      allPointsLazy.find(p => pred(value(p)))
+    }
   }
+
+  def iterate[T](start: => T)(f: T => T): LazyList[T] = start #:: iterate(f(start))(f)
 }

@@ -78,7 +78,7 @@ object Day8Part2 extends IOApp {
       else {
         // identify single candidate; add to solution and eliminate; recurse
         candidateSet.find(_._2.size == 1) match {
-          case None => None // TODO we could still iterate here ..
+          case None => None // Note in theory we could still iterate here ..
           case Some((key, value)) =>
             val newSolutions = foundSolutions + (key -> value.head)
             val newCandidateSet = (candidateSet - key).map { case (k, v) => k -> (v - value.head) }

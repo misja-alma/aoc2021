@@ -1,15 +1,13 @@
 package aoc2021
 
+import aoc2021.Day10.{isClosingDelimiter, isOpeningDelimiter, matches}
 import cats.Foldable
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits._
 
 import scala.collection.mutable
-import scala.util.Either
 
-
-object Day10Part1 extends IOApp {
-
+object Day10 {
   def isOpeningDelimiter(char: Char): Boolean = Set('(', '{', '[', '<').contains(char)
 
   def isClosingDelimiter(char: Char): Boolean = Set(')', '}', ']', '>').contains(char)
@@ -21,6 +19,9 @@ object Day10Part1 extends IOApp {
     case '>' => opening == '<'
     case _ => false
   }
+}
+
+object Day10Part1 extends IOApp {
 
   def findCorruptDelimiter(line: String): Option[Char] = {
     // for each opening delimiter: push on a stack
@@ -66,18 +67,6 @@ object Day10Part1 extends IOApp {
 }
 
 object Day10Part2 extends IOApp {
-
-  def isOpeningDelimiter(char: Char): Boolean = Set('(', '{', '[', '<').contains(char)
-
-  def isClosingDelimiter(char: Char): Boolean = Set(')', '}', ']', '>').contains(char)
-
-  def matches(opening: Char, closing: Char): Boolean = closing match {
-    case ')' => opening == '('
-    case ']' => opening == '['
-    case '}' => opening == '{'
-    case '>' => opening == '<'
-    case _ => false
-  }
 
   def findIncompleteMissingDelimiters(line: String): Option[Seq[Char]] = {
     // for each opening delimiter: push on a stack
