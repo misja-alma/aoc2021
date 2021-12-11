@@ -2,15 +2,6 @@ package aoc2021
 
 import cats.effect.{ExitCode, IO, IOApp}
 
-case class Point(x: Int, y: Int)
-
-object Point {
-  def apply(s: String): Point = {
-    val Array(x, y) = s.split(",").map(_.toInt)
-    Point(x, y)
-  }
-}
-
 object Day5Part1 extends IOApp {
 
   def parseLine(line: String): (Point, Point) = {
