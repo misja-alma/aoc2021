@@ -11,12 +11,12 @@ object Day12 {
     Seq(to -> from ,from -> to)
   }
 
-  def mergeEdges(edges: Seq[(String, String)]): Map[String, mutable.Set[String]] = {
-    val mm = new mutable.HashMap[String, mutable.Set[String]] with mutable.MultiMap[String, String]
+  def mergeEdges(edges: Seq[(String, String)]): Map[String, Set[String]] = {
+    val mm = mutable.MultiDict[String, String]()
     edges.foreach { case (to, from) =>
-      mm.addBinding(to, from)
+      mm.addOne(to -> from)
     }
-    mm.toMap
+    mm.sets.view.mapValues(_.toSet).toMap
   }
 
   def isUppercase(str: String): Boolean = str.forall(_.isUpper)
@@ -24,7 +24,7 @@ object Day12 {
 
 object Day12Part1 extends IOApp {
 
-  def findAllPaths(adjList: Map[String, mutable.Set[String]]): Set[Seq[String]] = {
+  def findAllPaths(adjList: Map[String, Set[String]]): Set[Seq[String]] = {
     val result = mutable.Set[Seq[String]]()
     val queue = mutable.Queue(Seq("start"))
     while(queue.nonEmpty) {
@@ -58,7 +58,7 @@ object Day12Part2 extends IOApp {
 
   case class Path(head: String, lowcaseNodes: Map[String, Int])
   
-  def findAllPaths(adjList: Map[String, mutable.Set[String]]): Long = {
+  def findAllPaths(adjList: Map[String, Set[String]]): Long = {
     var result = 0L
     val queue = mutable.Queue(Path("start", Map()))
     while(queue.nonEmpty) {
