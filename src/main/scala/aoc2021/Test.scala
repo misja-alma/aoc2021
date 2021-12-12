@@ -1,9 +1,10 @@
 package aoc2021
 
+import scala.collection._
+
 object Test extends App {
 
-  val grid = new Grid(Array(Array(1,2), Array(3,4)))
-  println (grid.allPoints.head)
-
-  println (grid.findPoint(_ == 3))
+  val ms = MultiSet[String]()
+  val ms2: immutable.MultiSet[String] = ms + "foo"
+  println(ms2.get("foo"))
 }

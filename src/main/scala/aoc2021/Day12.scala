@@ -1,14 +1,15 @@
 package aoc2021
 
-import aoc2021.Day12.{isUppercase, mergeEdges, toEdges}
+import aoc2021.Day12.{isUppercase, mergeEdges, toBidirectionalEdges}
 import cats.effect.{ExitCode, IO, IOApp}
 
+import scala.collection.immutable.MultiSet
 import scala.collection.mutable
 
 object Day12 {
-  def toEdges(line: String): Seq[(String, String)] = {
+  def toBidirectionalEdges(line: String): Seq[(String, String)] = {
     val Array(to, from) = line.split("-")
-    Seq(to -> from ,from -> to)
+    Seq(to -> from, from -> to)
   }
 
   def mergeEdges(edges: Seq[(String, String)]): Map[String, Set[String]] = {
@@ -45,7 +46,7 @@ object Day12Part1 extends IOApp {
       sc <- scannerFromResource("/day12.txt")
       lines = scannerToLines(sc)
       // build adjacency list
-      biDirAdjList = mergeEdges(lines.flatMap(toEdges))
+      biDirAdjList = mergeEdges(lines.flatMap(toBidirectionalEdges))
       // bfs, we don't need a visited set because we check per path
       // keep a seq of visited nodes per entry
       allPaths = findAllPaths(biDirAdjList)
@@ -56,21 +57,20 @@ object Day12Part1 extends IOApp {
 
 object Day12Part2 extends IOApp {
 
-  case class Path(head: String, lowcaseNodes: Map[String, Int])
-  
+  case class Path(head: String, lowcaseNodes: MultiSet[String])
+
   def findAllPaths(adjList: Map[String, Set[String]]): Long = {
     var result = 0L
-    val queue = mutable.Queue(Path("start", Map()))
+    val queue = mutable.Queue(Path("start", MultiSet()))
     while(queue.nonEmpty) {
       val path = queue.dequeue()
       if (path.head == "end") result += 1
       else {
         val neighbours = adjList.getOrElse(path.head, Seq())
         neighbours.foreach { nb =>
-          if (nb != "start" && (isUppercase(nb) || !path.lowcaseNodes.contains(nb) || path.lowcaseNodes.values.forall(_ < 2))) {
+          if (nb != "start" && (isUppercase(nb) || !path.lowcaseNodes.contains(nb) || path.lowcaseNodes.occurrences.forall(_._2 < 2))) {
             val newLowcaseNodes =
-              if (isUppercase(nb)) path.lowcaseNodes else
-                if (path.lowcaseNodes.contains(nb)) path.lowcaseNodes + (nb -> 2) else path.lowcaseNodes + (nb -> 1)
+              if (isUppercase(nb)) path.lowcaseNodes else path.lowcaseNodes + nb
             val newPath = Path(nb, newLowcaseNodes)
             queue.enqueue(newPath)
           }
@@ -85,7 +85,7 @@ object Day12Part2 extends IOApp {
       sc <- scannerFromResource("/day12.txt")
       lines = scannerToLines(sc)
       // build adjacency list
-      biDirAdjList = mergeEdges(lines.flatMap(toEdges))
+      biDirAdjList = mergeEdges(lines.flatMap(toBidirectionalEdges))
       solution = findAllPaths(biDirAdjList)
       _ <- IO.delay(println("Solution: " + solution))
     } yield ExitCode.Success
