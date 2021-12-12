@@ -108,22 +108,11 @@ object Day8Part2 extends IOApp {
     // define per number its digit locations as a list of above indices
     // for each line: take the unique numbers
     // for each number, identify a list of candidates based on length
-    // for each candidate, take all digits, put them all in the possible locations ->
-    // i.e. each parsed letter for the candidate gets a set of possible locations based on that number
-    // do this for each number. But beware; nrs with multiple candidates create their own solution spaces! -> we have to iterate over those
-    // each time we add a parsed digit to a nr candidate, we take the intersection of its possible locations with the possible ones
-    // in the new candidate.
-    // when this is done, we have for each parsed char the smallest set of possible locations
-    // we have a number of these sets for the cartesian product of all nrs with multiple candidates
-    // then for each of these;
-    // no sets left: full solution!
-    // identify a set of size 0. Found: no solution! Next candidate set
-    // identify a set of size 1. Found: digit solution! Add to digit solutions of candidate set and remove location from all other sets.
-    // no set of size 1 found? Oops, we need to extend our solution to iterate over possibilities ..
-    // recurse
     val toIdentify = line.split(" ").toSet - "|"
     val differentDigits = toIdentify.flatten
     val possibleLocations = differentDigits.map(c => c -> (0 to 9).toSet).toMap
+    // Start with adding all locations in the matching digit(s) based on length to each character in the string
+    // intersect the possible locations per new matching digit
     val candidateSets = toIdentify.foldLeft(Seq(possibleLocations)) { case (candidateSets, pattern) => expandCandidateSets(candidateSets, pattern)}
     // not really needed but handy for debugging
     val nonEmpties = candidateSets.filterNot(_.exists(_._2.isEmpty))
@@ -132,7 +121,8 @@ object Day8Part2 extends IOApp {
       ones.toSet.size < ones.size
     }
 
-    // TODO would like some kind of mapFind, to stop early in case of a Some. Use stream (view?) maybe?
+    // then reduce the possible location sets per character by each time taking a singleton set and removing it from all other
+    // candidate sets, until a solution is found or a candidate set turns out to be impossible
     val solution = nonDuplicates.view.map(c => reduceToSolution(Map(), differentDigits.size)(c)).find(_.isDefined).get
     solution.get
   }
