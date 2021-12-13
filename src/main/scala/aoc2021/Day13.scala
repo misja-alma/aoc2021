@@ -12,7 +12,6 @@ object Day13 {
     }
 
   // assume that the folded part is never larger than the part folded over?
-  // maybe fold in place, just ignore foldOvers < 0 and clear folded cells
   def fold(foldLine: Either[Int, Int], grid: Grid[Boolean]): Grid[Boolean] = foldLine match {
     case Left(x) =>
       (0 until grid.height).foreach { yf =>

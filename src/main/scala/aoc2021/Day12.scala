@@ -12,13 +12,12 @@ object Day12 {
     case _ => sys.error("Can't parse line: " + line)
   }
 
-  def mergeEdges(edges: Seq[(String, String)]): Map[String, Set[String]] = {
-    val mm = mutable.MultiDict[String, String]()
-    edges.foreach { case (to, from) =>
-      mm.addOne(to -> from)
-    }
-    mm.sets.view.mapValues(_.toSet).toMap
-  }
+  def mergeEdges(edges: Seq[(String, String)]): Map[String, Set[String]] =
+    edges
+      .groupMap(_._1)(_._2)
+      .view
+      .mapValues(_.toSet)
+      .toMap
 
   def isUppercase(str: String): Boolean = str.forall(_.isUpper)
 }
