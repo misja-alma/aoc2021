@@ -5,7 +5,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 
 object Day11 {
 
-  def updateAndCountFlashes(grid: Grid, totalFlashes: Int): (Grid, Int) = {
+  def updateAndCountFlashes(grid: Grid[Int], totalFlashes: Int): (Grid[Int], Int) = {
     var newFlashes = 0
     var flashes = grid.allPoints.flatMap { p =>
       val current = grid.value(p)
@@ -46,7 +46,7 @@ object Day11Part1 extends IOApp {
     for {
       sc <- scannerFromResource("/day11.txt")
       lines = scannerToLines(sc).map(_.trim)
-      grid = new Grid(lines.map(_.map(_.asDigit).toArray).toArray)
+      grid = new Grid[Int](lines.map(_.map(_.asDigit).toArray).toArray)
       generation100 = Iterator
         .iterate((grid, 0)){ case (grid, nrFlashes) => updateAndCountFlashes(grid, nrFlashes) }
         .drop(100)

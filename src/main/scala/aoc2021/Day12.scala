@@ -7,9 +7,9 @@ import scala.collection.immutable.MultiSet
 import scala.collection.mutable
 
 object Day12 {
-  def toBidirectionalEdges(line: String): Seq[(String, String)] = {
-    val Array(to, from) = line.split("-")
-    Seq(to -> from, from -> to)
+  def toBidirectionalEdges(line: String): Seq[(String, String)] = line match {
+    case s"$from-$to" => Seq((from, to))
+    case _ => sys.error("Can't parse line: " + line)
   }
 
   def mergeEdges(edges: Seq[(String, String)]): Map[String, Set[String]] = {

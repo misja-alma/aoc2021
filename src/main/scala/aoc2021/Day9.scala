@@ -23,7 +23,7 @@ object Day9Part1 extends IOApp {
 
 object Day9Part2 extends IOApp {
 
-  def basin(grid: Grid)(point: Point): Set[Point] = {
+  def basin(grid: Grid[Int])(point: Point): Set[Point] = {
     // bfs; add neighbours without 9's and without visited points
     val visited = mutable.Set(point)  // start at point
     val next = mutable.Queue().addAll(grid.neighbours(point).filterNot(p => grid.value(p) == 9))

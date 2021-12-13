@@ -5,11 +5,6 @@ import cats.implicits._
 
 object Day7Part1 extends IOApp {
 
-  // TODO
-  // 1. use iterator?
-  // 2. binary search must be faster. But upperbound can't be max because that's O(n)
-  //    otoh linear search can hold a running sum. Just needs to know how many points smaller and how many larger,
-  //    and needs sorted array
   def findNearestPoint(ps: Array[Int]): Int = {
     var pos = ps.min
     var best = ps.sum - pos * ps.length

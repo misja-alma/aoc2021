@@ -3,6 +3,7 @@ import cats.effect.IO
 import java.io.InputStream
 import java.util.Scanner
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 
 package object aoc2021 {
   def scannerFromResource(resourcePath: String): IO[Scanner] = {
@@ -20,16 +21,53 @@ package object aoc2021 {
   case class Point(x: Int, y: Int)
 
   object Point {
-    def apply(s: String): Point = {
-      val Array(x, y) = s.split(",").map(_.toInt)
-      Point(x, y)
+    def apply(s: String): Point =
+      s match {
+        case s"$x,$y" => Point(x.toInt, y.toInt)
+        case _ => sys.error("Cant parse Point: " + s)
     }
   }
 
-  class Grid(grid: Array[Array[Int]]) {
-    def value(point: Point): Int = grid(point.y)(point.x)
+  object Grid {
+    def withDimensions[T: ClassTag](x: Int, y: Int, initialValue: T): Grid[T] = {
+      val ar = (0 until y).map(_ => Array.fill[T](x)(initialValue)).toArray
+      new Grid(ar)
+    }
 
-    def update(point: Point, value: Int): Unit = grid(point.y)(point.x) = value
+    def fromPoints(points: Seq[Point]): Grid[Boolean] = {
+      val maxX = points.maxBy(_.x).x
+      val maxY = points.maxBy(_.y).y
+      val grid = Grid.withDimensions(maxX + 1, maxY + 1, false)
+      points.foreach { p => grid.update(p, true) }
+      grid
+    }
+
+    def printBooleanGrid(grid: Grid[Boolean]): Unit = {
+      val allFilled = grid.allPoints.filter { p => grid.value(p)}
+      val maxX = allFilled.maxBy(_.x).x
+      val maxY = allFilled.maxBy(_.y).y
+      (0 to maxY).foreach { row =>
+        (0 to maxX)foreach { col =>
+          if (grid.value(Point(col, row))) print('#') else print('.')
+        }
+        println()
+      }
+    }
+  }
+
+  /**
+   *
+   * @param grid main array contains the rows, subArrays the columns.
+   * @tparam T
+   */
+  class Grid[T](grid: Array[Array[T]]) {
+    def width: Int = if (grid.isEmpty) 0 else grid.head.length
+
+    def height: Int = grid.length
+
+    def value(point: Point): T = grid(point.y)(point.x)
+
+    def update(point: Point, value: T): Unit = grid(point.y)(point.x) = value
 
     def allPoints: Seq[Point] =
       for {
@@ -55,11 +93,15 @@ package object aoc2021 {
       raw.filter(p => p.x >= 0 && p.x < grid.head.length && p.y >= 0 && p.y < grid.length)
     }
 
-    def forall(pred: Int => Boolean): Boolean = {
+    def forall(pred: T => Boolean): Boolean = {
       grid.forall(_.forall(pred))
     }
 
-    def findPoint(pred: Int => Boolean): Option[Point] = {
+    def count(pred: T => Boolean): Int = {
+      allPoints.count { p => pred(value(p)) }
+    }
+
+    def findPoint(pred: T => Boolean): Option[Point] = {
       allPointsLazy.find(p => pred(value(p)))
     }
   }
