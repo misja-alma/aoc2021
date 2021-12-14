@@ -106,5 +106,20 @@ package object aoc2021 {
     }
   }
 
-  def iterate[T](start: => T)(f: T => T): LazyList[T] = start #:: iterate(f(start))(f)
+  def iterate[T](start: T)(f: T => T): LazyList[T] = {
+    def doIterate(newStart: T): LazyList[T] =
+      newStart #:: doIterate(f(newStart))
+
+    doIterate(start)
+  }
+
+  type FrequencyMap[T] = Map[T, Long]
+  def FrequencyMap[T](): FrequencyMap[T] = Map[T, Long]()
+  
+  implicit class FrequencyMapOps[T](map: FrequencyMap[T]) {
+    def addCount(el: T, count: Long): FrequencyMap[T] = {
+      val newCount = count + map.getOrElse(el, 0L)
+      map.updated(el, newCount)
+    }
+  }
 }

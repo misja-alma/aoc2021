@@ -69,7 +69,7 @@ object Day7Part1 extends IOApp {
     for {
       sc <- scannerFromResource("/day7.txt")
       nrs = sc.nextLine().split(",").map(_.toInt)
-      nearest = findNearestPointSmart(nrs)
+      nearest = findNearestPointPure(nrs)
       distance = nrs.map { nr => Math.abs(nearest - nr) }.sum
       _ <- IO.delay(println("Solution: " + distance)) // 344138
     } yield ExitCode.Success

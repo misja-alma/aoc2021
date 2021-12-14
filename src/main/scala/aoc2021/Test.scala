@@ -1,10 +1,18 @@
 package aoc2021
 
-import scala.collection._
+import scala.collection
 
 object Test extends App {
 
-  val ms = MultiSet[String]()
-  val ms2: immutable.MultiSet[String] = ms + "foo"
-  println(ms2.get("foo"))
+  var counter = 0
+  def f(i: Int): Int = {
+    counter += 1
+    println (i)
+    i + 1
+  }
+
+  val gen10 = iterate(0)(f).drop(10).head
+
+  println ("gen10: " + gen10)
+  println ("count " + counter)
 }
