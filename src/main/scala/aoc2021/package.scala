@@ -124,4 +124,8 @@ package object aoc2021 {
       map.updated(el, newCount)
     }
   }
+
+  case class Interval(min: Int, max: Int) {
+    def contains(x: Int): Boolean = x >= min && x <= max
+  }
 }

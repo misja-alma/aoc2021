@@ -4,7 +4,7 @@ import aoc2021.Day16.{Literal, Operator, Packet, allVersionNrs, decode, hexToBin
 import cats.effect.{ExitCode, IO, IOApp}
 
 object Day16 {
-  trait Packet {
+  sealed trait Packet {
     def versionNr: Int
   }
 
@@ -112,7 +112,7 @@ object Day16Part1 extends IOApp {
     for {
       sc <- scannerFromResource("/day16.txt")
       bits = hexToBinary(sc.nextLine().trim())
-      (length, packet) = decode(bits)
+      (_, packet) = decode(bits)
       versionNrs = allVersionNrs(packet)
       _ <- IO.delay(println("Solution: " + versionNrs.sum))
     } yield ExitCode.Success
@@ -141,7 +141,7 @@ object Day16Part2 extends IOApp {
     for {
       sc <- scannerFromResource("/day16.txt")
       bits = hexToBinary(sc.nextLine().trim())
-      (length, packet) = decode(bits)
+      (_, packet) = decode(bits)
       result = evaluate(packet)
       _ <- IO.delay(println("Solution: " + result))  // 12301926782560
     } yield ExitCode.Success
