@@ -26,6 +26,8 @@ package object aoc2021 {
         case s"$x,$y" => Point(x.toInt, y.toInt)
         case _ => sys.error("Cant parse Point: " + s)
     }
+
+    def manhattanDistance(p1: Point, p2: Point): Int = Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y)
   }
 
   object Grid {

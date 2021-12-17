@@ -1,18 +1,12 @@
 package aoc2021
 
+import aoc2021.Day16.hexToBinary
+
 import scala.collection
 
 object Test extends App {
 
-  var counter = 0
-  def f(i: Int): Int = {
-    counter += 1
-    println (i)
-    i + 1
-  }
-
-  val gen10 = iterate(0)(f).drop(10).head
-
-  println ("gen10: " + gen10)
-  println ("count " + counter)
+  //val pattern = """target area: x=(-?d+)\.\.(-?d+), y=(-?d+)\.\.(-?d+)""".r
+  val pattern = """target area: x=(-?\d+)""".r
+  println(pattern.matches("target area: x=-1"))
 }
