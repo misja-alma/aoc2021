@@ -84,9 +84,8 @@ object Day18 {
     }
 
   def explode(pair: Pair): Option[Pair] = {
-    // find explode; explode and check results immediately; split them if needed
 
-    // left: needs explode. right: not
+    // bool: explosion happened somewhere. option1: add left, option2: add right
     def doExplode(pair: Pair, depth: Int): (Boolean, Option[Long], Option[Long], Pair) = {
       pair match {
         case pl@PairLeaf(_) =>
