@@ -2,10 +2,11 @@ name := "aoc2021"
 
 version := "1.0"
 
-scalaVersion := "2.13.3"
+scalaVersion := "2.13.7"
 
 libraryDependencies += "org.typelevel" %% "cats-effect" % "2.5.1" withSources() withJavadoc()
 libraryDependencies += "org.scala-lang.modules" %% "scala-collection-contrib" % "0.2.2" withSources()
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "2.1.0" withSources()
 
 scalacOptions ++= Seq(
   "-feature",
