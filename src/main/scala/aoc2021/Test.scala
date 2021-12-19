@@ -1,6 +1,7 @@
 package aoc2021
 
-import aoc2021.Test.SimpleParser.{literalPacket, operatorPacket, operatorPacketId, terminalSubPacket}
+import aoc2021.Day16.hexToBinary
+import aoc2021.Test.SimpleParser.{literalPacket, operatorPacket, operatorPacketId, packet, terminalSubPacket}
 
 import scala.util.parsing.combinator.RegexParsers
 
@@ -24,8 +25,8 @@ object Test extends App {
   object SimpleParser extends RegexParsers {
     def version: Parser[Int] = """[0,1]{3}""".r ^^ { bitsToInt }
 
-    def literalPacketId = "010"
-    def operatorPacketId: Parser[Int] = """(000)|(001)|(011)|(100)|(101)|(110)|(111)""".r ^^ { bitsToInt }
+    def literalPacketId = "100"
+    def operatorPacketId: Parser[Int] = """(000)|(001)|(010)|(011)|(101)|(110)|(111)""".r ^^ { bitsToInt }
 
     def subPacket : Parser[Int] = """1[0,1]{4}""".r ^^ { s => bitsToInt(s.tail) }
     def terminalSubPacket : Parser[Int] = """0[0,1]{4}""".r ^^ { s => bitsToInt(s.tail) }
@@ -49,9 +50,11 @@ object Test extends App {
     def operatorPacket: Parser[Operator] = version ~ operatorPacketId ~ (packetsByCount | packetsByLength) ^^ { case v ~ id ~ packets =>
       Operator(v, id, packets)
     }
+
+    def packet = literalPacket | operatorPacket
   }
 
-  val parsed = SimpleParser.parse(operatorPacket, "011111000000000000101111101001111")
+  val parsed = SimpleParser.parse(packet, hexToBinary("8A004A801A8002F478"))
   println (parsed)
 
-}
+}             

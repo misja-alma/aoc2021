@@ -1,7 +1,10 @@
 package aoc2021
 
-import aoc2021.Day16.{Literal, Operator, Packet, allVersionNrs, decode, hexToBinary}
+import aoc2021.Day16.PacketParser.packet
+import aoc2021.Day16.{Literal, Operator, Packet, PacketParser, allVersionNrs, hexToBinary}
 import cats.effect.{ExitCode, IO, IOApp}
+
+import scala.util.parsing.combinator._
 
 object Day16 {
   sealed trait Packet {
@@ -20,7 +23,7 @@ object Day16 {
 
   def padLeadingZeroes(s: String, nrDigits: Int): String = s.reverse.padTo(nrDigits, '0').reverse
 
-  def hexToBinary(line: String): Seq[Int] = {
+  def hexToBinary(line: String): String = {
     line.toSeq.flatMap { c =>
       val bString = if (c.isDigit) {
          c.asDigit.toBinaryString
@@ -30,80 +33,50 @@ object Day16 {
         } else {
           sys.error("Invalid hexadecimal : " + line)
         }
-      padLeadingZeroes(bString, 4).map(_.asDigit)
-    }
+      padLeadingZeroes(bString, 4)
+    }.mkString("")
   }
+
+  def bitsToInt(bits: String): Int =
+    bits.foldLeft(0) { case (total, bit) => total * 2 + bit.asDigit }
 
   def bitsToLong(bits: Seq[Int]): Long =
     bits.foldLeft(0) { case (total, bit) => total * 2 + bit }
-
-  def hexToLong(hex: Seq[Long]): Long =
+  
+  def hexToLong(hex: Seq[Int]): Long =
     hex.foldLeft(0L) { case (total, digit) => total * 16 + digit }
 
-  // first int = nr bits parsed, second is the value TODO I should do this with some monad
-  def parseLiteralGroups(bits: Seq[Int]): (Int, Long) = {
-    val firstParts = bits.sliding(5, 5).takeWhile(_.head == 1).toSeq
-    val lastPartStart = firstParts.length * 5
-    val lastPart = bits.slice(lastPartStart, lastPartStart + 5)
-    val hex = firstParts.map(p => bitsToLong(p.tail)) :+ bitsToLong(lastPart.tail)
-    val totalLength = (firstParts.length + 1) * 5
-    (totalLength, hexToLong(hex))
-  }
+  object PacketParser extends RegexParsers {
+    def version: Parser[Int] = """[0,1]{3}""".r ^^ { bitsToInt }
 
-  def parseSubPackets(bits: Seq[Int]): (Int, Seq[Packet]) = {
-    bits.head match {
-      case 0 =>
-        val subLength = bitsToLong(bits.slice(1, 16)).toInt
-        val (parsedLength, subPackets) = parseSubPacketsByLength(bits.drop(16), subLength)
-        (parsedLength + 1 + 15, subPackets)
-      case 1 =>
-        val subCount = bitsToLong(bits.slice(1, 12)).toInt
-        val (parsedLength, subPackets) = parseSubPacketsByCount(bits.drop(12), subCount)
-        (parsedLength + 1 + 11, subPackets)
+    def literalPacketId = "100"
+    def operatorPacketId: Parser[Int] = """(000)|(001)|(010)|(011)|(101)|(110)|(111)""".r ^^ { bitsToInt }
+
+    def subPacket : Parser[Int] = """1[0,1]{4}""".r ^^ { s => bitsToInt(s.tail) }
+    def terminalSubPacket : Parser[Int] = """0[0,1]{4}""".r ^^ { s => bitsToInt(s.tail) }
+    def packetValue: Parser[Long] = rep(subPacket) ~ terminalSubPacket ^^ { case subPackets ~ terminal => hexToLong(subPackets :+ terminal) }
+
+    def literalPacket: Parser[Literal] = version ~ literalPacketId ~ packetValue ^^ { case version ~ id ~ value => Literal(version, value) }
+
+    def packetsLength : Parser[Int] = """0[0,1]{15}""".r ^^ { s => bitsToInt(s.tail) }
+    def packetsCount : Parser[Int] = """1[0,1]{11}""".r ^^ { s => bitsToInt(s.tail) }
+
+    def numberOfPackets(nr: Int): Parser[Seq[Packet]] = repN(nr, packet)
+    def packetsByCount: Parser[Seq[Packet]] = packetsCount >> { count => numberOfPackets(count)}
+    def anyBit: Parser[Char] = """[0,1]""".r ^^ { _.head }
+    // feed the parsed length to a new parser matches the full string and that parses it into packets
+    def packetsByLength: Parser[Seq[Packet]] = packetsLength >> { length =>
+      repN(length, anyBit) ^^ { packetString =>
+        PacketParser.parse(rep(packet), packetString.mkString("")).get
+      }
     }
-  }
 
-  def parseSubPacketsByLength(bits: Seq[Int], length: Int): (Int, Seq[Packet]) = {
-    var bitPos = 0
-    var parsed = Seq[Packet]()
-    while (bitPos < length) {
-      val (parsedLength, packet) = decode(bits.drop(bitPos))
-      parsed = parsed :+ packet
-      bitPos += parsedLength.toInt
+    def operatorPacket: Parser[Operator] = version ~ operatorPacketId ~ (packetsByCount | packetsByLength) ^^ { case v ~ id ~ packets =>
+      Operator(v, id, packets)
     }
-    (length, parsed)
-  }
 
-  def parseSubPacketsByCount(bits: Seq[Int], count: Int): (Int, Seq[Packet]) = {
-    // parse count packets
-    var bitPos = 0
-    var parsed = Seq[Packet]()
-    (0 until count).foreach { _ =>
-      val (length, packet) = decode(bits.drop(bitPos))
-      parsed = parsed :+ packet
-      bitPos += length
-    }
-    (bitPos, parsed)
+    def packet: Parser[Packet] = literalPacket | operatorPacket
   }
-
-  def decode(bits: Seq[Int]): (Int, Packet) = {
-    // 3 bits: version
-    // 3 bits: ID. 4 = literal. followed by groups of 5 bits, 1st = 1 (more) or 0 (end).
-    //             not-4 = operator id. followed by length id: 0 -> next 15 bits are total length in bits of subpackets
-    //                                                         1 -> next 11 bits is nr of contained subpackets
-    //                                  followed by subpackets
-    val version = bitsToLong(bits.take(3)).toInt
-    val id = bitsToLong(bits.slice(3, 6)).toInt
-    id match {
-      case 4 =>
-        val (parsedLength, packet) = parseLiteralGroups(bits.drop(6))
-        (parsedLength + 6, Literal(version, packet))
-      case _ =>
-        val (parsedLength, packet) = parseSubPackets(bits.drop(6))
-        (parsedLength + 6, Operator(version, id, packet))
-    }
-  }
-
 }
 
 object Day16Part1 extends IOApp {
@@ -112,10 +85,13 @@ object Day16Part1 extends IOApp {
     for {
       sc <- scannerFromResource("/day16.txt")
       bits = hexToBinary(sc.nextLine().trim())
-      (_, packet) = decode(bits)
-      versionNrs = allVersionNrs(packet)
+      parsedPacket = PacketParser.parse(packet, bits) match {
+        case PacketParser.Success(p, _) => p
+        case PacketParser.NoSuccess(msg, _) => sys.error(msg)
+      }
+      versionNrs = allVersionNrs(parsedPacket)
       _ <- IO.delay(println("Solution: " + versionNrs.sum))
-    } yield ExitCode.Success
+    } yield ExitCode.Success       // 960
   }
 }
 
@@ -141,9 +117,12 @@ object Day16Part2 extends IOApp {
     for {
       sc <- scannerFromResource("/day16.txt")
       bits = hexToBinary(sc.nextLine().trim())
-      (_, packet) = decode(bits)
-      result = evaluate(packet)
-      _ <- IO.delay(println("Solution: " + result))  // 12301926782560
+      parsedPacket = PacketParser.parse(packet, bits) match {
+        case PacketParser.Success(p, _) => p
+        case PacketParser.NoSuccess(msg, _) => sys.error(msg)
+      }
+      result = evaluate(parsedPacket)
+      _ <- IO.delay(println("Solution: " + result))
     } yield ExitCode.Success
   }
 }
