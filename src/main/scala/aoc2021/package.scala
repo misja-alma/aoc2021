@@ -89,9 +89,10 @@ package object aoc2021 {
     }
 
     def allNeighbours(point: Point): Seq[Point] = {
-      val raw = Seq(Point(point.x-1, point.y), Point(point.x-1, point.y-1), Point(point.x - 1, point.y+1),
-        Point(point.x, point.y-1),  Point(point.x, point.y+1),
-        Point(point.x+1, point.y), Point(point.x+1, point.y-1), Point(point.x+1, point.y+1))
+      val raw = for {
+        px <- point.x-1 to point.x+1
+        py <- point.y-1 to point.y+1
+      } yield Point(px, py)
       raw.filter(p => p.x >= 0 && p.x < grid.head.length && p.y >= 0 && p.y < grid.length)
     }
 
