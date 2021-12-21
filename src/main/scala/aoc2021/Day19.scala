@@ -35,7 +35,7 @@ object Day19 {
   }
 
   def matRotations(pt: Pos3D): Seq[Pos3D] = {
-    iterate(pt) { p => Pos3D(p.z - p.y, p.x - p.z, p.y -p.z) }.take(24).toList
+    LazyList.iterate(pt) { p => Pos3D(p.z - p.y, p.x - p.z, p.y -p.z) }.take(24).toList
   }
 
   def applyRotation(pt: Pos3D, rotation: Rotation): Pos3D = {

@@ -25,7 +25,7 @@ object Day7Part1 extends IOApp {
     val pos = ps.min
     val best = ps.sum - pos * ps.length
 
-    val tries = iterate((pos, best, false)) { case (pos, best, _) =>
+    val tries = LazyList.iterate((pos, best, false)) { case (pos, best, _) =>
       val newPos = pos + 1
       val newDist = ps.map(n => Math.abs(newPos - n)).sum
       if (newDist > best) {

@@ -42,7 +42,7 @@ object Day21Part1 extends IOApp {
       lines = scannerToLines(sc)
       Seq(pos1, pos2) = lines.map(parsePosition)
       startState = GameState(0, pos1, pos2, 0, 0, 0)
-      finalState = iterate(startState)(nextRoll).dropWhile(_.losingScore.isEmpty).head
+      finalState = LazyList.iterate(startState)(nextRoll).dropWhile(_.losingScore.isEmpty).head
       solution = finalState.losingScore.get * finalState.diceRolls
       _ <- IO.delay(println("Solution: " + solution))
     } yield ExitCode.Success

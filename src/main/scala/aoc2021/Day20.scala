@@ -46,7 +46,7 @@ object Day20Part1 extends IOApp {
       lines = scannerToLines(sc)
       (index, input) = parseInput(lines)
       // in gen 0 empty cells are dark, in gen 1 reverse etc
-      (_, finalInput) = iterate((false, input))(calcOutput(index)).drop(50).head  // change to 2 for part 1
+      (_, finalInput) = LazyList.iterate((false, input))(calcOutput(index))(50)  // change to 2 for part 1
       solution = finalInput.size
       _ <- IO.delay(println("Solution: " + solution))
     } yield ExitCode.Success
