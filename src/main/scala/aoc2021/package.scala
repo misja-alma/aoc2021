@@ -12,7 +12,7 @@ package object aoc2021 {
   }
 
   def scannerToLines(sc: Scanner): Seq[String] = {
-    val lineReader = sc.useDelimiter("\n")
+    val lineReader = sc.useDelimiter(System.lineSeparator())
     val result = ArrayBuffer[String]()
     while (lineReader.hasNext) result.append(lineReader.next())
     result.toSeq
