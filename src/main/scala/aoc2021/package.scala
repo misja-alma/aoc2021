@@ -30,6 +30,12 @@ package object aoc2021 {
     def manhattanDistance(p1: Point, p2: Point): Int = Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y)
   }
 
+  case class Pos3D(x: Int, y: Int, z: Int) {
+    def +(pos2: Pos3D): Pos3D = Pos3D(x + pos2.x, y + pos2.y, z + pos2.z)
+
+    def -(pos2: Pos3D): Pos3D = Pos3D(x - pos2.x, y - pos2.y, z - pos2.z)
+  }
+
   object Grid {
     def withDimensions[T: ClassTag](x: Int, y: Int, initialValue: T): Grid[T] = {
       val ar = (0 until y).map(_ => Array.fill[T](x)(initialValue)).toArray
@@ -128,5 +134,17 @@ package object aoc2021 {
 
   case class Interval(min: Int, max: Int) {
     def contains(x: Int): Boolean = x >= min && x <= max
+
+    def size: Int = max - min + 1
+
+    def intersect(i2: Interval): Option[Interval] = {
+      if (min <= i2.min && max >= i2.min) {
+        Some(Interval(i2.min, Math.min(max, i2.max)))
+      } else
+        if (min <= i2.max && min >= i2.min) {
+          Some(Interval(min, Math.min(max, i2.max)))
+        } else
+          None
+    }
   }
 }

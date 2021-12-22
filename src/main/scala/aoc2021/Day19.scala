@@ -1,16 +1,11 @@
 package aoc2021
 
-import aoc2021.Day19.{Pos3D, calculateScannerPositions, getUniqueBeacons, parseScanners}
+import aoc2021.Day19.{calculateScannerPositions, getUniqueBeacons, parseScanners}
 import cats.effect.{ExitCode, IO, IOApp}
 
 import scala.collection.mutable
 
 object Day19 {
-  case class Pos3D(x: Int, y: Int, z: Int) {
-    def +(pos2: Pos3D): Pos3D = Pos3D(x + pos2.x, y + pos2.y, z + pos2.z)
-
-    def -(pos2: Pos3D): Pos3D = Pos3D(x - pos2.x, y - pos2.y, z - pos2.z)
-  }
 
   case class Scanner(nr: Int, scannedBeacons: Seq[Pos3D])
 

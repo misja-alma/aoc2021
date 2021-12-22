@@ -1,7 +1,5 @@
 package aoc2021
 
-import aoc2021.Day19.Pos3D
-
 object Test2 extends App {
   val rots = Day19.matRotations(Pos3D(5,6,-4))
   println (rots.toSeq)
