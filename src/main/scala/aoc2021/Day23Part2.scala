@@ -125,7 +125,7 @@ object Day23Part2 extends IOApp {
           } &&
           // or equal kind and pos, but other one generates a free way when gone
           (op.position.y > pod.position.y || (op.position.y == pod.position.y &&
-            (op.kind < pod.kind) ||
+            //(op.kind < pod.kind) ||
             {
               //println(op)
               op.kind == pod.kind && (otherPods - op).exists { opp =>

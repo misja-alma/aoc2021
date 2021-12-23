@@ -248,8 +248,8 @@ object Day23Part1 extends IOApp {
 
     while (best.isEmpty) {
       val next = queue.dequeue()
-      println("----------------- Candidate --------------------")
-      printState(grid, next.pods)
+//      println("----------------- Candidate --------------------")
+//      printState(grid, next.pods)
       if (isFinalPos(next.pods)) {
         best = Some(next)
       } else {
@@ -268,10 +268,10 @@ object Day23Part1 extends IOApp {
           }
         }
 
-        checkHomeFills.foreach { sol =>
-          println(s"---------------- ${sol.score} ---------------------")
-          printState(grid, sol.pods)
-        }
+//        checkHomeFills.foreach { sol =>
+//          println(s"---------------- ${sol.score} ---------------------")
+//          printState(grid, sol.pods)
+//        }
 
         checkHomeFills.foreach { ch => fillHomeFills(biggestHomeFillFound, ch.pods) }
 
