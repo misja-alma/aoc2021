@@ -55,8 +55,19 @@ package object aoc2021 {
       val maxX = allFilled.maxBy(_.x).x
       val maxY = allFilled.maxBy(_.y).y
       (0 to maxY).foreach { row =>
-        (0 to maxX)foreach { col =>
+        (0 to maxX).foreach { col =>
           if (grid.value(Point(col, row))) print('#') else print('.')
+        }
+        println()
+      }
+    }
+
+    def printGrid(grid: Grid[Char]): Unit = {
+      val maxX = grid.width
+      val maxY = grid.height
+      (0 until maxY).foreach { y =>
+        (0 until maxX).foreach { x =>
+          print(grid.value(Point(x, y)))
         }
         println()
       }
