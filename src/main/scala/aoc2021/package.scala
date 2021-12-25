@@ -12,7 +12,7 @@ package object aoc2021 {
   }
 
   def scannerToLines(sc: Scanner): Seq[String] = {
-    val lineReader = sc.useDelimiter(System.lineSeparator())
+    val lineReader = sc.useDelimiter("\n") // TODO this works for the puzzle input but not for copy pasting the test
     val result = ArrayBuffer[String]()
     while (lineReader.hasNext) result.append(lineReader.next())
     result.toSeq
@@ -101,14 +101,14 @@ package object aoc2021 {
       } yield Point(x, y)
 
     def neighbours(point: Point): Seq[Point] = {
-      val raw = Seq(Point(point.x-1, point.y), Point(point.x, point.y-1), Point(point.x+1, point.y), Point(point.x, point.y+1))
+      val raw = Seq(Point(point.x - 1, point.y), Point(point.x, point.y - 1), Point(point.x + 1, point.y), Point(point.x, point.y + 1))
       raw.filter(p => p.x >= 0 && p.x < grid.head.length && p.y >= 0 && p.y < grid.length)
     }
 
     def allNeighbours(point: Point): Seq[Point] = {
       val raw = for {
-        px <- point.x-1 to point.x+1
-        py <- point.y-1 to point.y+1
+        px <- point.x - 1 to point.x + 1
+        py <- point.y - 1 to point.y + 1
       } yield Point(px, py)
       raw.filter(p => p.x >= 0 && p.x < grid.head.length && p.y >= 0 && p.y < grid.length)
     }
@@ -123,6 +123,14 @@ package object aoc2021 {
 
     def findPoint(pred: T => Boolean): Option[Point] = {
       allPointsLazy.find(p => pred(value(p)))
+    }
+
+    override def equals(o2: Any): Boolean = {
+      if (!o2.isInstanceOf[Grid[T]]) false else {
+        val grid2 = o2.asInstanceOf[Grid[T]]
+        width == grid2.width && height == grid2.height &&
+          allPoints.forall { pt => value(pt) == grid2.value(pt) }
+      }
     }
   }
 
