@@ -12,9 +12,8 @@ package object aoc2021 {
   }
 
   def scannerToLines(sc: Scanner): Seq[String] = {
-    val lineReader = sc.useDelimiter("\n") // TODO this works for the puzzle input but not for copy pasting the test
     val result = ArrayBuffer[String]()
-    while (lineReader.hasNext) result.append(lineReader.next())
+    while (sc.hasNext) result.append(sc.nextLine())
     result.toSeq
   }
 
