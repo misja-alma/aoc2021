@@ -1,22 +1,19 @@
 package aoc2021
 
-import aoc2021.Day23Part1.inOwnRoom
 import aoc2021.Grid.{printGrid, withDimensions}
 import cats.effect.{ExitCode, IO, IOApp}
 
 import scala.collection.mutable
 
 object Day23Part2 extends IOApp {
+  val deepestHomePt = 5
+  val printTrace = false
 
   // id to make them unique
-  case class Amphipod(id: Int, kind: Char, position: Point, stepCost: Int, justMoved: Boolean) {
-    val toState: AmphipodState = AmphipodState(kind, position, justMoved)
-  }
-
-  case class AmphipodState(kind: Char, position: Point, justMoved: Boolean)
+  case class Amphipod(id: Int, kind: Char, position: Point, stepCost: Int)
 
   //case class Solution(score: Long, steps: Seq[(Char, Point, Point)], pods: Set[Amphipod])
-  case class Solution(score: Long,  pods: Set[Amphipod])
+  case class Solution(score: Long,  pods: Set[Amphipod], nrSafeAtHome: Int)
 
   def scanAmphipods(grid: Grid[Char]): Set[Amphipod] = {
     var podCount = 0
@@ -27,17 +24,17 @@ object Day23Part2 extends IOApp {
 
     grid.allPoints.flatMap { p =>
       grid.value(p) match {
-        case 'A' => Some(Amphipod(nextId, 'A', p, 1, false))
-        case 'B' => Some(Amphipod(nextId, 'B', p, 10, false))
-        case 'C' => Some(Amphipod(nextId, 'C', p, 100, false))
-        case 'D' => Some(Amphipod(nextId, 'D', p, 1000, false))
+        case 'A' => Some(Amphipod(nextId, 'A', p, 1))
+        case 'B' => Some(Amphipod(nextId, 'B', p, 10))
+        case 'C' => Some(Amphipod(nextId, 'C', p, 100))
+        case 'D' => Some(Amphipod(nextId, 'D', p, 1000))
         case _ => None
       }
     }.toSet
   }
 
   def isFinalPos(pods: Set[Amphipod]): Boolean = {
-    pods.forall { p => inOwnRoom(p, p.position) }
+    pods.forall { p => inOwnRoom(p) }
   }
 
   def ownRoomX(pod: Amphipod): Int = pod.kind match {
@@ -47,16 +44,8 @@ object Day23Part2 extends IOApp {
     case 'D' => 9
   }
 
-  def isRightOutsideRoom(point: Point): Boolean = point.y == 1 &&
-    (point.x == 3 || point.x == 5 || point.x == 7 || point.x == 9)
-
-  def isInHallWay(point: Point): Boolean = point.y == 1 && point.x > 0 && point.x < 12
-
-  def inOtherRoom(pod: Amphipod, point: Point): Boolean =
-    point.y >=2 && point.y <=5 && !inOwnRoom(pod, point)
-
-  def inOwnRoom(pod: Amphipod, point: Point): Boolean =
-    point.x == ownRoomX(pod) && point.y >=2 && point.y <= 5
+  def inOwnRoom(pod: Amphipod): Boolean =
+    pod.position.x == ownRoomX(pod) && pod.position.y >=2 && pod.position.y <= deepestHomePt
 
   def ownRoomSafe(pod: Amphipod, otherPods: Set[Amphipod]): Boolean = {
     otherPods.filterNot(_.kind == pod.kind).forall {  op =>
@@ -64,155 +53,131 @@ object Day23Part2 extends IOApp {
     }
   }
 
-  def isOwnRoomEntryFree(pod: Amphipod, otherPods: Set[Amphipod]): Boolean = {
-    val entryPos = Point(ownRoomX(pod), 2)
-    otherPods.forall { op =>
-      op.position != entryPos
+  // Requires that pod is in some home
+  def reachableHallways(pod: Amphipod, otherPods: Map[Point, Amphipod]): Set[(Int, Point)] = {
+    if (pod.position.y == 1) Set() else {
+      // check if road free until entry point
+      val freeUntilEntry = (pod.position.y - 1 to 1 by -1).forall { y => !otherPods.contains(Point(pod.position.x, y)) }
+      val maybeCostToHall = if (freeUntilEntry) {
+        Some((pod.position.y - 1) * pod.stepCost)
+      } else None
+      // list all free endpoints to the left + all to the right
+      maybeCostToHall.toSeq.flatMap { cost =>
+        // find first occupied to left; take free points until there
+        val firstOccLeft = ((pod.position.x - 1) to 1 by -1).find { x =>
+          otherPods.contains(Point(x, 1))
+        }.getOrElse(0)
+        val toLeft = ((pod.position.x - 1) until firstOccLeft by -1).flatMap { x =>
+          if (x % 2 == 0 || x == 1) {
+            val newCost = (pod.position.x - x) * pod.stepCost
+            Some((cost + newCost) -> Point(x, 1))
+          } else None
+        }
+
+        // same for right
+        val firstOccRight = ((pod.position.x + 1) to 11).find { x =>
+          otherPods.contains(Point(x, 1))
+        }.getOrElse(12)
+        val toRight = ((pod.position.x + 1) until firstOccRight).flatMap { x =>
+          if (x % 2 == 0 || x == 11) {
+            val newCost = (x - pod.position.x) * pod.stepCost
+            Some((cost + newCost) -> Point(x, 1))
+          } else None
+        }
+
+        toLeft ++ toRight
+      }.toSet
     }
   }
 
-  def nextPosToHome(pod: Amphipod, point: Point): Point = {
-    val homeX = ownRoomX(pod)
-    if (point.x == homeX) {
-      point.copy(y = point.y + 1)
+  // Returns None if pod is in its own home already
+  def deepestReachableHomePoint(pod: Amphipod, otherPods: Map[Point, Amphipod]): Option[(Int, Point)] = {
+    if (!ownRoomSafe(pod, otherPods.values.toSet) || inOwnRoom(pod)) None else {
+      // pod in some homepoint (not own); check if points to hallway are free
+      val maybeCostToHall = if (pod.position.y >= 2) {
+        val free = (pod.position.y - 1 to 1 by -1).forall { y => !otherPods.contains(Point(pod.position.x, y))}
+        if (free) {
+          Some((pod.position.y - 1) * pod.stepCost)
+        } else None
+      } else Some(0)
+      // check from hallway; check if all points to entry point are free
+      val maybeCostToHome: Option[Int] = maybeCostToHall flatMap { cost =>
+
+        val free = (pod.position.x to ownRoomX(pod) by (ownRoomX(pod) - pod.position.x).sign).forall { x =>
+          !otherPods.contains(Point(x, 1))
+        }
+        if (free) {
+          Some(cost + Math.abs(pod.position.x - ownRoomX(pod)) * pod.stepCost)
+        } else {
+          None
+        }
+      }
+      // give deepest free home point, if any
+      maybeCostToHome.flatMap { cost =>
+        val destPoint = (2 to deepestHomePt).find { y => otherPods.contains(Point(ownRoomX(pod), y)) } match {
+          case None => Some(Point(ownRoomX(pod), deepestHomePt))
+          case Some(occupiedPoint) => if (occupiedPoint > 2) Some(Point(ownRoomX(pod), occupiedPoint - 1)) else None
+        }
+        destPoint.map { pt =>
+          val newCost = (pt.y - 1) * pod.stepCost
+          (cost + newCost) -> pt
+        }
+      }
+    }
+  }
+
+  def safeAtHome(pod: Amphipod, otherPods: Map[Point, Amphipod]): Boolean =
+    inOwnRoom(pod) && (pod.position.y + 1 to deepestHomePt).forall { y =>
+      val pos = Point(pod.position.x, y)
+      otherPods.get(pos) match {
+        case Some(pd) => pd.kind == pod.kind
+        case None => true
+      }
+    }
+
+  def allEndPositions(pod: Amphipod, otherPods: Map[Point, Amphipod]): Set[(Int, Point)] = {
+    // when outside, their can be only 1 end position:
+    // the own home, the furthest position, if it is reachable and allowed
+    // when inside, all valid hallway positions are possible when they are reachable but prefer going home if possible
+    // but ofc not when already in own home with only own kind below
+    if (safeAtHome(pod, otherPods)) {
+      Set()
     } else {
-      if (point.y > 1) point.copy(y = point.y - 1)
-      else {
-        point.copy(x = point.x + (homeX - point.x).sign)
+      deepestReachableHomePoint(pod, otherPods) match {
+        case Some(pt) => Set(pt) // always prefer going straight home
+        case None => if (pod.position.y == 1) Set() else reachableHallways(pod, otherPods)
       }
     }
-  }
-
-  // returns Some if whole road is unblocked and the homw is free to enter, and pod is not in home already
-  def hasFreeWayToHome(otherPods: Set[Amphipod])(pod: Amphipod): Boolean = {
-    !inOwnRoom(pod, pod.position) &&
-      isOwnRoomEntryFree(pod, otherPods) && ownRoomSafe(pod, otherPods) && {
-      var free = true
-      var freePos = pod.position
-      while(free && !inOwnRoom(pod, freePos)) {
-        freePos = nextPosToHome(pod, freePos)
-        free = otherPods.forall(_.position != freePos)
-      }
-      free
-    }
-  }
-
-  def isStupidMove(pod: Amphipod, newPos: Point, otherPods: Set[Amphipod], podsWithFreeWay: Set[Amphipod]): Boolean = {
-    // if any of the pods has a free way to a safe home then any other move from another pod is stupid, if
-    // this pod has higher kind
-    podsWithFreeWay.exists(_.kind > pod.kind) ||
-      (!podsWithFreeWay.contains(pod) && podsWithFreeWay.nonEmpty) ||
-      // don't move anywhere else than towards own room if it is free and you're the highest pod with free way
-      // (NOTE => previous rule guarantees this)
-      (podsWithFreeWay.contains(pod) && newPos != nextPosToHome(pod, pod.position)) ||
-      // don't move out of bottom of own home
-      (inOwnRoom(pod, pod.position) && ownRoomSafe(pod, otherPods) && newPos.y < pod.position.y) ||
-      // don't move anywhere else than to bottom of own room if next to it and it is free
-      (inOwnRoom(pod, pod.position) && pod.position.y >= 2 && pod.position.y < 5 && ownRoomSafe(pod, otherPods) &&
-        !(newPos.y == pod.position.y + 1 && newPos.x == pod.position.x)) ||
-      // don't move out of own home when home is full with own pods
-      (inOwnRoom(pod, pod.position) && {
-        otherPods.filter(_.kind == pod.kind).forall { brother => inOwnRoom(brother, brother.position) }
-      })  || {
-      // move is upwards in (other) home, but other non-blocked candidate exists in other home that is lower or cheaper
-      val lowestFirst = (!podsWithFreeWay.contains(pod) && (pod.position.y > 1 && newPos.y < pod.position.y && otherPods.exists { op =>
-        op.position.y > 1 && op.position.x != pod.position.x && !inOwnRoom(op, op.position) &&
-          // op can move all the way up
-          (1 until op.position.y).forall { oy => otherPods.forall { opp => opp.position.x != op.position.x || opp.position.y != oy } } &&
-          // and left or right in the hallway is a free space
-          Seq(Point(op.position.x - 1, 1), Point(op.position.x + 1, 1)).exists { opp =>
-            otherPods.forall { oppp => oppp.position.x != opp.x || oppp.position.y != opp.y }
-          } &&
-          // or equal kind and pos, but other one generates a free way when gone
-          (op.position.y > pod.position.y || (op.position.y == pod.position.y &&
-            //(op.kind < pod.kind) ||
-            {
-              //println(op)
-              op.kind == pod.kind && (otherPods - op).exists { opp =>
-                hasFreeWayToHome(otherPods - op + pod)(opp)
-              } &&
-                !otherPods.exists { opp =>
-                  hasFreeWayToHome(otherPods - pod)(opp)
-                }
-            }
-            )
-            )
-
-      }))
-
-      //      if (lowestFirst) {
-      //        printState(grid, otherPods + pod)
-      //        println(newPos)
-      //      }
-
-      lowestFirst
-    }
-  }
-
-  def isValidMove(pod: Amphipod, newPos: Point, otherPods: Set[Amphipod], grid: Grid[Char]): Boolean = {
-    grid.value(newPos) != '#' &&
-      otherPods.forall(_.position != newPos) &&
-      // don't stop on space outside room => this is a check for the -other- pods!
-      otherPods.forall{ op => !isRightOutsideRoom(op.position)} &&
-      // don't move into other room unless you were already there
-      (!inOtherRoom(pod, newPos) || inOtherRoom(pod, pod.position)) &&
-      // don't move into own room when other kind of pod is there
-      (!inOwnRoom(pod, newPos) || ownRoomSafe(pod, otherPods) ) &&
-      // stop moving rule. -> don't move when outside unless own place is free,
-      // unless you were already moving (CHECK)
-      (!isInHallWay(newPos) || isRightOutsideRoom(newPos) || pod.justMoved || isOwnRoomEntryFree(pod, otherPods))
   }
 
   def generateMoves(grid: Grid[Char], sol: Solution): Set[Solution] = {
-    val Solution(score, /*steps,*/ pods) = sol
-    // generate move (= a new list of pods), of one pod at a time
-    //    println(s"---------------- Generating candidates for ---------------------")
-    //    printState(grid, pods)
-    //    println()
+    val Solution(score, /*steps,*/ pods, _) = sol
 
-    val podsWithFreeWay: Set[Amphipod] = sol.pods.filter { p =>
-      hasFreeWayToHome(sol.pods - p)(p)
-    }
+    val allPods = pods.map { p => p.position -> p }.toMap
+    //  move only pods that are not in their homes  yet
+    val allResults = pods.filterNot{ p => safeAtHome(p, allPods - p.position) }.flatMap { pod  =>
+      val otherPods = (pods - pod).map { p => p.position -> p }.toMap
+      val positions = allEndPositions(pod, otherPods)
 
-    val rawSolutions = pods.flatMap { pod  =>
-      val otherPods = pods - pod
-      val positions = grid.neighbours(pod.position)
-
-      positions.filter{ p =>
-        isValidMove(pod, p, otherPods, grid)
-      }.filterNot { p => isStupidMove(pod, p, otherPods, podsWithFreeWay) }
-        .map { p =>
-          pod.copy(position = p, justMoved = true)
-        }.map { newPod =>
-        //val newStep = (newPod.kind, pod.position, newPod.position)
-        val sol = Solution(score + newPod.stepCost, /*steps :+ newStep,*/ otherPods.map{op => op.copy(justMoved = false) } + newPod)
-        sol
+      positions.map { case (cost, newPos) =>
+         val newPod = pod.copy(position = newPos)
+         val nrAtHome = sol.nrSafeAtHome + (if (safeAtHome(newPod, otherPods)) 1 else 0)
+         Solution(score + cost, otherPods.values.toSet + newPod, nrAtHome)
       }
     }
 
-    val finalSolutions = if (rawSolutions.nonEmpty) {
-      // prefer solutions that create the most freeHomes
-      val withNrFreeHomes: Map[Int, Set[(Solution, Int)]] = rawSolutions.map { s =>
-        s -> s.pods.count { p =>
-          hasFreeWayToHome(s.pods - p)(p)
-        }
-      }.groupBy(_._2)
-
-      withNrFreeHomes.toSeq.maxBy(_._1)._2.map(_._1)
-    } else rawSolutions
-
-    //    finalSolutions.foreach { sol =>
-    //      println(s"---------------- ${sol.score} ---------------------")
-    //      printState(grid, sol.pods)
-    //    }
-    finalSolutions
+    // prefer moves that end in own room
+    val highestRoomCounts = if (allResults.isEmpty) allResults else allResults.groupBy(_.nrSafeAtHome).maxBy(_._1)._2
+    highestRoomCounts
   }
 
-  object SolutionOrdering extends Ordering[Solution] {
-    def compare(p1: Solution, p2: Solution) = {
-      p2.score.compareTo(p1.score)
-    }  // reverse ordering for Scala's pq; it will put the largest in the head but we want the shortest path
-  }
+  // reverse ordering for Scala's pq; it will put the largest in the head but we want the shortest path
+  val solutionOrdering = Ordering.by[Solution, Long]( -_.score )
+//  object SolutionOrdering extends Ordering[Solution] {
+//    def compare(p1: Solution, p2: Solution) = {
+//        p2.score.compareTo(p1.score)
+//    }
+//  }
 
   def printState(grid: Grid[Char], pods: Set[Amphipod]): Unit = {
     (0 until grid.height).foreach { row =>
@@ -227,54 +192,45 @@ object Day23Part2 extends IOApp {
     }
   }
 
-  def fillHomeFills(hf: mutable.Map[Char, Int], pods: Set[Amphipod]): Unit = {
-    val homeByKind = pods.filter(p => inOwnRoom(p, p.position)).groupBy(_.kind).mapValues(_.size)
-
-    Seq('A', 'B', 'C', 'D').foreach { kind =>
-      if (hf.getOrElse(kind, 0) < homeByKind.getOrElse(kind, 0) ) {
-        hf.update(kind, homeByKind(kind))
-      }
-    }
+  def countSafeAtHome(pods: Set[Amphipod]): Int = {
+    val allPods = pods.map { p => p.position -> p }.toMap
+    pods.count { p => safeAtHome(p, allPods - p.position)}
   }
-
-  def kindAndHiger(k: Char): Seq[Char] = k to 'D'
 
   def findSolution(pods: Set[Amphipod], grid: Grid[Char]): Solution = {
 
-    val queue = mutable.PriorityQueue[Solution]()(SolutionOrdering)
-    queue.enqueue(Solution(0, /*Seq(),*/ pods))
+    val queue = mutable.PriorityQueue[Solution]()(solutionOrdering)
+    queue.enqueue(Solution(0, /*Seq(),*/ pods, countSafeAtHome(pods)))
 
-    val visited = mutable.MultiSet[Set[AmphipodState]]()
-    visited += pods.map(_.toState)
+    val visited = mutable.MultiSet[Set[Amphipod]]()
 
     var best = None : Option[Solution]
-    val biggestHomeFillFound = mutable.Map[Char, Int]()
-    fillHomeFills(biggestHomeFillFound, pods)
 
     while (best.isEmpty) {
-      val next = queue.dequeue()
-      //      println("-------------------------------------")
-      //      printState(grid, next.pods)
-      if (isFinalPos(next.pods)) {
-        best = Some(next)
-      } else {
-        val newStates = generateMoves(grid, next).filterNot { m => visited.contains(m.pods.map(_.toState)) }
-        visited.addAll(newStates.map(_.pods.map(_.toState)))
+      val next: Solution = queue.dequeue()
+      if (!visited.contains(next.pods)) {
+        visited += next.pods
 
-        val checkHomeFills = newStates.filterNot { s =>
-          // for each kind;
-          // count nr outside home;
-          // if bigger than totalPods - maxFound then skip.
-          val notHmeByKind = s.pods.filter(p => !inOwnRoom(p, p.position)).groupBy(_.kind).mapValues(_.size)
-
-          notHmeByKind.exists { case (kind, nrNotAtHome) =>
-            val bestAtHomeForKind = biggestHomeFillFound.getOrElse(kind, 0)
-            nrNotAtHome > 2 - bestAtHomeForKind
-          }
+        if (printTrace) {
+          println("----------------- Candidate --------------------")
+          printState(grid, next.pods)
         }
-        checkHomeFills.foreach { ch => fillHomeFills(biggestHomeFillFound, ch.pods) }
 
-        queue.addAll(newStates)
+        if (isFinalPos(next.pods)) {
+          best = Some(next)
+        } else {
+          val newStates = generateMoves(grid, next).filterNot { m => visited.contains(m.pods) }
+          //visited.addAll(newStates.map(_.pods))
+
+          if (printTrace) {
+            newStates.foreach { sol =>
+              println(s"---------------- ${sol.score} ---------------------")
+              printState(grid, sol.pods)
+            }
+          }
+
+          queue.addAll(newStates)
+        }
       }
     }
 
@@ -290,12 +246,12 @@ object Day23Part2 extends IOApp {
       _ <- IO.delay(printGrid(grid))
       finalPods = findSolution(amphipods, grid)
       solution = finalPods.score
-      _ <- IO.delay(println("Solution: " + solution))
-      //      _ <- IO.delay {
-      //        finalPods.steps.foreach { s =>
-      //          println (s._1 + " " + s._2 + " -> " + s._3)
-      //        }
-      //      }
+      _ <- IO.delay(println("Solution: " + solution))    // 15160
+//      _ <- IO.delay {
+//        finalPods.steps.foreach { s =>
+//          println (s._1 + " " + s._2 + " -> " + s._3)
+//        }
+//      }
     } yield ExitCode.Success
   }
 }
