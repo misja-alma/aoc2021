@@ -23,7 +23,14 @@ object Day23Part2 extends IOApp {
     private lazy val cachedHash = id.hashCode() * 31 + position.hashCode()
   }
 
-  case class Solution(score: Long, steps: Seq[(Char, Point, Point)], pods: Set[Amphipod])
+  case class Solution(score: Long, steps: Seq[(Char, Point, Point)], pods: Set[Amphipod]) {
+    lazy val totalCostToHome: Int = pods.map { p =>
+      if (inOwnRoom(p)) 0 else {
+        val homePt = Point(ownRoomX(p), 2)
+        distance(p.position, homePt) * p.stepCost
+      }
+    }.sum
+  }
   //case class Solution(score: Long,  pods: Set[Amphipod])
 
   def scanAmphipods(grid: Grid[Char]): Set[Amphipod] = {
@@ -56,6 +63,27 @@ object Day23Part2 extends IOApp {
     case 'D' => 9
   }
 
+  def distance(pFrom: Point, pTo: Point): Int = {
+    if (pTo.y >= 2) {
+      // to some home
+      if (pFrom.y >= 2) {
+        // from some home
+        if (pFrom.x == pTo.x) {
+          0 // don't count moves inside any home
+        } else {
+          // other home
+          pFrom.y - 1 + Point.manhattanDistance(pFrom.copy(y = 1), pTo)
+        }
+      } else {
+        // from hallway
+        Point.manhattanDistance(pFrom, pTo)
+      }
+    } else {
+      // to hallway from home
+      Point.manhattanDistance(pFrom, pTo)
+    }
+  }
+
   def inOwnRoom(pod: Amphipod): Boolean =
     pod.position.x == ownRoomX(pod) && pod.position.y >= 2 && pod.position.y <= deepestHomePt
 
@@ -70,11 +98,8 @@ object Day23Part2 extends IOApp {
     if (pod.position.y == 1) Set() else {
       // check if road free until entry point
       val freeUntilEntry = (pod.position.y - 1 to 1 by -1).forall { y => !otherPods.contains(Point(pod.position.x, y)) }
-      val maybeCostToHall = if (freeUntilEntry) {
-        Some((pod.position.y - 1) * pod.stepCost)
-      } else None
+      if (!freeUntilEntry) Set() else {
       // list all free endpoints to the left + all to the right
-      maybeCostToHall.toSeq.flatMap { cost =>
         // find first occupied to left; take free points until there
         val firstOccLeft = ((pod.position.x - 1) to 1 by -1).find { x =>
           otherPods.contains(Point(x, 1))
@@ -82,7 +107,7 @@ object Day23Part2 extends IOApp {
         val toLeft = ((pod.position.x - 1) until firstOccLeft by -1).flatMap { x =>
           if (x % 2 == 0 || x == 1) {
             val newCost = (pod.position.x - x) * pod.stepCost
-            Some((cost + newCost) -> Point(x, 1))
+            Some(Point(x, 1))
           } else None
         }
 
@@ -93,12 +118,12 @@ object Day23Part2 extends IOApp {
         val toRight = ((pod.position.x + 1) until firstOccRight).flatMap { x =>
           if (x % 2 == 0 || x == 11) {
             val newCost = (x - pod.position.x) * pod.stepCost
-            Some((cost + newCost) -> Point(x, 1))
+            Some(Point(x, 1))
           } else None
         }
 
         toLeft ++ toRight
-      }.toSet
+      }.toSet.map { dest: Point => distance(pod.position, dest) * pod.stepCost -> dest }
     }
   }
 
@@ -180,7 +205,7 @@ object Day23Part2 extends IOApp {
   }
 
   // reverse ordering for Scala's pq; it will put the largest in the head but we want the shortest path
-  private val solutionOrdering = Ordering.by[Solution, Long](-_.score)
+  private val solutionOrdering = Ordering.by[Solution, Long] { s => -s.score - s.totalCostToHome }
 
   def printState(grid: Grid[Char], pods: Set[Amphipod]): Unit = {
     (0 until grid.height).foreach { row =>
@@ -195,6 +220,8 @@ object Day23Part2 extends IOApp {
     }
   }
 
+  var stepCount = 0
+
   def findSolution(pods: Set[Amphipod], grid: Grid[Char]): Solution = {
 
     val queue = mutable.PriorityQueue[Solution]()(solutionOrdering)
@@ -208,6 +235,7 @@ object Day23Part2 extends IOApp {
       val next: Solution = queue.dequeue()
       if (!visited.contains(next.pods)) {
         visited += next.pods
+        stepCount += 1
 
         if (printTrace) {
           println("----------------- Candidate --------------------")
@@ -242,10 +270,10 @@ object Day23Part2 extends IOApp {
       amphipods = scanAmphipods(grid)
       finalPods = findSolution(amphipods, grid)
       solution = finalPods.score
-      _ <- IO.delay(println("Solution: " + solution)) // 15160
+      _ <- IO.delay(println("Solution: " + solution))
       _ <- IO.delay {
         printState(grid, amphipods)
-        println ("----------- Steps: --------------")
+        println (s"----------- Total Steps: $stepCount --------------")
         var pods = amphipods
         var count = 0
         
@@ -261,3 +289,6 @@ object Day23Part2 extends IOApp {
     } yield ExitCode.Success
   }
 }
+
+// 222963 steps
+// 219059 steps with cost to home included
